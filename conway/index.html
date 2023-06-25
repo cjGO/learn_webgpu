@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>WebGPU Life</title>
+  </head>
+  <body>
+    <canvas width="512" height="512"></canvas>
+    <script type="module">
+      //  Giving the script tag a type of "module" allows you to use top-level awaits, which is useful for WebGPU initialization!
+
+      //webgpu can be used to do computations and/or render. rendering requires a canvas
+      const canvas = document.querySelector("canvas");
+
+      // Your WebGPU code will begin here!
+
+      if (!navigator.gpu) {
+        throw new Error("WebGPU not supported on this browser.");
+      }
+
+      const adapter = await navigator.gpu.requestAdapter();
+      if (!adapter) {
+        throw new Error("No appropriate GPUAdapter found.");
+      }
+
+      const device = await adapter.requestDevice(); // NOTE! this is where you can request bigger GPU power if needed
+
+      // Link the canvas tag with the GPU device
+      const context = canvas.getContext("webgpu");
+      const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
+      // there are key arguments here; namely the device to be used. The canvasFormat is the TEXTURE FORMAT that should be used
+      // Textures are objects that webgpu uses to store image data. Each texture has a format to tell the GPU how it is laid out in
+      // memory. Less optimal texture formats result in additional copying into VRAM.
+      context.configure({
+        device: device,
+        format: canvasFormat,
+      });
+      // provides an interface for recording GPU commands.
+      const encoder = device.createCommandEncoder();
+
+      // Render passes are when all drawing operations in WebGPU happen
+      // const pass = encoder.beginRenderPass({
+      //   colorAttachments: [
+      //     {
+      //       view: context.getCurrentTexture().createView(),
+      //       //  loadOp value of "clear" indicates that you want the texture to be cleared when the render pass starts.
+      //       loadOp: "clear",
+      //       //  storeOp value of "store" indicates that once the render pass is finished you want the results of any drawing done during the render pass saved into the texture.
+      //       storeOp: "store",
+      //     },
+      //   ],
+      // });
+
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [
+          {
+            view: context.getCurrentTexture().createView(),
+            loadOp: "clear",
+            clearValue: { r: 0, g: 0.3, b: 0, a: 1 }, // New line
+            storeOp: "store",
+          },
+        ],
+      });
+
+
+
+
+      pass.end();
+
+      // It's important to know that simply making these calls does not cause the GPU to actually do anything. They're just recording commands for the GPU to do later.
+
+      // In order to create a GPUCommandBuffer, call finish() on the command encoder. The command buffer is an opaque handle to the recorded commands.
+      const commandBuffer = encoder.finish();
+
+      // Once you submit a command buffer, it cannot be used again, so there's no need to hold on to it. If you want to submit more commands, you need to build another command buffer.
+      device.queue.submit([commandBuffer]);
+      device.queue.submit([encoder.finish()]);
+
+
+
+
+    </script>
+  </body>
+</html>
